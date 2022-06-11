@@ -1,8 +1,6 @@
 package main
 
 import (
-	// "encoding/json"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,21 +10,12 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
 	ImgDir = "images"
 )
 
-type item struct {
-	Name     string `json:"name"`
-	Category string `json:"category"`
-}
-
-type itemlist struct {
-	Items []item `json:"items"`
-}
 type Response struct {
 	Message string `json:"message"`
 }
@@ -35,49 +24,14 @@ func root(c echo.Context) error {
 	res := Response{Message: "Hello, world!"}
 	return c.JSON(http.StatusOK, res)
 }
-func getItems(c echo.Context) error {
-	//sqlを開く
-	db,err := sql.Open("sqlite3", "../db/mercari.sqlite3")
-	if err !=nil{
-		c.Logger().Error("error occured while opening database:%s",err)
-	}
-	rows,err:=db.Query("select name,category from items")
-	var result itemlist
-	defer rows.Close()
-	for rows.Next() {
-		var category string
-		var name string
-		// var image string
-		rows.Scan(&name, &category)
-		result_json := item{Name: name, Category: category}
-		result.Items = append(result.Items, result_json)
-	}
-	return c.JSON(http.StatusOK, result.Items)
-
-}
 
 func addItem(c echo.Context) error {
 	// Get form data
 	name := c.FormValue("name")
-	category := c.FormValue("category")
-	//sqlを開く
-	db,err := sql.Open("sqlite3", "../db/mercari.sqlite3")
-	if err !=nil{
-		c.Logger().Error("error occured while opening database:%s",err)
-	}
-	// var els itemlist
+	c.Logger().Infof("Receive item: %s", name)
 
-	//sqlに入れる
-	rows, err := db.Prepare("insert into items(name, category) values(?,?)")
-	_, err = rows.Exec(name, category)
-	if err != nil {
-		c.Logger().Error("error occured while Exec")
-	}
-	c.Logger().Infof("Receive item: %s, category: %s", name, category)
-
-
-	message := fmt.Sprintf("item received: %s,category: %s", name, category)
-	res:=Response{Message:message}
+	message := fmt.Sprintf("item received: %s", name)
+	res := Response{Message: message}
 
 	return c.JSON(http.StatusOK, res)
 }
@@ -116,7 +70,6 @@ func main() {
 
 	// Routes
 	e.GET("/", root)
-	e.GET("/items", getItems)
 	e.POST("/items", addItem)
 	e.GET("/image/:imageFilename", getImg)
 
